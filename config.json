@@ -1,0 +1,21 @@
+{
+    "dalle": {
+        "api_url": "https://bf.dallemini.ai/generate",
+        "api_request_timeout": 210,
+        "generate_request_timout": 360,
+        "retry_delay": 5
+    },
+    "ghetty": {
+        "url": "https://images.ghetty.space/upload"
+    },
+    "irc":{
+        "nick":"xxxxxxxxxxxx",
+        "host":"xxxxxxxxxxx",
+	    "auto_reconnect": true,
+        "auto_reconnect_wait": 4000,
+        "auto_reconnect_max_retries": 3,
+        "port":9999,
+        "tls":true,
+        "channels":["#testing"]
+    }
+}
