@@ -18,7 +18,7 @@ var
     request = require('request'),
     bot = new IRC.Client();
 
-function postImage(to){
+function postImage(to,from,prompt){
     const options = {
         url: config.ghetty.url,
         json: true
@@ -28,7 +28,7 @@ function postImage(to){
             console.log(err);
             console.log('Error!');
         } else {
-            bot.say(to,body.href);
+            bot.say(to,`@${from} here you go: "${prompt}" ${body.href}`);
         }
     });
     let form = req.form();
@@ -57,7 +57,7 @@ bot.on('message', function(event) {
             if (message.match(/^\.dalle\s.+$/)) {
                 let
                     url = config.dalle.api_url,
-                    prompt = message.slice(7);
+                    prompt = message.slice(7).trim();
                 // check if bot is not handling another call
                 if (!generating){
                     generating = true;
@@ -95,7 +95,7 @@ bot.on('message', function(event) {
                                         setTimeout(function(){
                                             joinImages.joinImages(['row1.jpg','row2.jpg','row3.jpg'],options_vertical).then((img) => {
                                                 img.toFile('dalle.jpg');
-                                                setTimeout(function(){postImage(to)},500);
+                                                setTimeout(function(){postImage(to,from,prompt)},500);
                                             });
                                         },500);
                                     });
