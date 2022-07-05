@@ -14,7 +14,7 @@ http.createServer(function(req, res) {
           res.end(JSON.stringify(err));
           return;
         }
-        res.writeHead(200);
+        res.writeHead(200, {'Content-Type': 'image/jpg'});
         res.end(data);
       });
 }).listen(app_port);
