@@ -7,14 +7,15 @@ const
     IRC = require('irc-framework'),
     colors = require('irc-colors'),
     config = require('./config'),
+    path = require('path'),
     host = config.irc.host,
     port = config.irc.port,
     nick = config.irc.nick,
     tls = config.irc.tls,
-    pass = config.irc.pass
+    pass = config.irc.pass,
+    channels = [];
 
 var
-    generating = false,
     needle = require('needle'),
     bot = new IRC.Client();
 
@@ -22,7 +23,7 @@ function postImage(to,from,prompt){
     let url = config.ghetty.url,
         data = {
             image:{
-                file: 'dalle.jpg',
+                file: path.join(__dirname,'images',to,'dalle.jpg'),
                 content_type: 'image/jpeg'
             }
         },
@@ -37,7 +38,7 @@ function postImage(to,from,prompt){
             bot.say(to,`Ghetty error ${response.statusCode}: ${error}!.`);
         }
     });
-    generating=false;
+    channels[to].running = false;
 }
     
 bot.on('error', function(err) {
@@ -47,6 +48,7 @@ bot.on('error', function(err) {
 bot.on('connected', function() {
     config.irc.channels.forEach( channel => {
         bot.join(channel);
+        channels[channel] = { running: false };
     });
 });
 
@@ -61,15 +63,18 @@ bot.on('message', function(event) {
             url = config.dalle.api_url,
             prompt = message.slice(7).trim();
         // check if bot is not handling another call
-        if (!generating){
-            generating = true;
+        if (!channels[to].running){
+            channels[to].running = true;
             bot.say(to,`Generating from "${prompt}" prompt...`);
             needle.post(url, {prompt: prompt},{json: true}, function(error, response) {
                 if (!error && response.statusCode == 200){
                     // save 9 images
+                    if (!fs.existsSync(path.join(__dirname,'images',to))){
+                        fs.mkdirSync(path.join(__dirname,'images',to), { recursive: true });
+                    }
                     for (let i=0; i < response.body.images.length ; i++){
                         let buffer = Buffer.from(response.body.images[i], "base64");
-                        fs.writeFileSync(`dall-e_result_${i}.jpg`, buffer);
+                        fs.writeFileSync(path.join(__dirname,'images',to,`dall-e_result_${i}.jpg`), buffer);
                     }
                     const options_horizontal = {
                         direction:"horizontal",
@@ -84,15 +89,15 @@ bot.on('message', function(event) {
                             offset: 5
                         };
                     // join 9 images into a single 3x3 grid image
-                    joinImages.joinImages(['dall-e_result_0.jpg', 'dall-e_result_1.jpg','dall-e_result_2.jpg'],options_horizontal).then((img) => {
-                        img.toFile('row1.jpg');
-                        joinImages.joinImages(['dall-e_result_3.jpg', 'dall-e_result_4.jpg','dall-e_result_5.jpg'],options_horizontal).then((img) => {
-                            img.toFile('row2.jpg');
-                            joinImages.joinImages(['dall-e_result_6.jpg', 'dall-e_result_7.jpg','dall-e_result_8.jpg'],options_horizontal).then((img) => {
-                                img.toFile('row3.jpg');
+                    joinImages.joinImages([path.join(__dirname,'images',to,'dall-e_result_0.jpg'), path.join(__dirname,'images',to,'dall-e_result_1.jpg'),path.join(__dirname,'images',to,'dall-e_result_2.jpg')],options_horizontal).then((img) => {
+                        img.toFile(path.join(__dirname,'images',to,'row1.jpg'));
+                        joinImages.joinImages([path.join(__dirname,'images',to,'dall-e_result_3.jpg'), path.join(__dirname,'images',to,'dall-e_result_4.jpg'),path.join(__dirname,'images',to,'dall-e_result_5.jpg')],options_horizontal).then((img) => {
+                            img.toFile(path.join(__dirname,'images',to,'row2.jpg'));
+                            joinImages.joinImages([path.join(__dirname,'images',to,'dall-e_result_6.jpg'), path.join(__dirname,'images',to,'dall-e_result_7.jpg'),path.join(__dirname,'images',to,'dall-e_result_8.jpg')],options_horizontal).then((img) => {
+                                img.toFile(path.join(__dirname,'images',to,'row3.jpg'));
                                 setTimeout(function(){
-                                    joinImages.joinImages(['row1.jpg','row2.jpg','row3.jpg'],options_vertical).then((img) => {
-                                        img.toFile('dalle.jpg');
+                                    joinImages.joinImages([path.join(__dirname,'images',to,'row1.jpg'),path.join(__dirname,'images',to,'row2.jpg'),path.join(__dirname,'images',to,'row3.jpg')],options_vertical).then((img) => {
+                                        img.toFile(path.join(__dirname,'images',to,'dalle.jpg'));
                                         setTimeout(function(){postImage(to,from,prompt)},500);
                                     });
                                 },500);
@@ -100,9 +105,12 @@ bot.on('message', function(event) {
                         });
                     });
                 } else {
-                    // no results found
-                    generating = false;
-                    bot.say(to,`Dall-E Error ${response.statusCode}: ${error}!.`);
+                    if (response.statusCode == 524){
+                        bot.say(to,`@${from} Dall-E Service is too Busy. Please try again later...`);
+                    } else {
+                        bot.say(to,`Dall-E Error ${response.statusCode}: ${response.statusMessage}`);
+                    }
+                    channels[to].running = false;
                 }
             });
         } else {
