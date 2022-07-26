@@ -11,8 +11,10 @@ const
     host = config.irc.host,
     port = config.irc.port,
     nick = config.irc.nick,
+    username = config.irc.nick,
+    gecos = config.irc.nick,
     tls = config.irc.tls,
-    pass = config.irc.pass,
+    password = config.irc.pass,
     channels = [];
 
 var
@@ -50,6 +52,10 @@ bot.on('connected', function() {
         bot.join(channel);
         channels[channel] = { running: false };
     });
+});
+
+bot.on('invited', function(event) {
+    bot.join(event.channel);
 });
 
 bot.on('message', function(event) {
@@ -132,7 +138,7 @@ bot.on('message', function(event) {
 });
 
 bot.on('registered', function (){
-    bot.say('nickserv','identify '+ pass);
+    bot.say('nickserv','identify '+ password);
 })
 
-bot.connect({host,port,tls,nick});
+bot.connect({host,port,tls,nick,username,gecos,password});
