@@ -11,10 +11,8 @@ const
     host = config.irc.host,
     port = config.irc.port,
     nick = config.irc.nick,
-    username = config.irc.nick,
-    gecos = config.irc.nick,
     tls = config.irc.tls,
-    password = config.irc.pass,
+    pass = config.irc.pass,
     channels = [];
 
 var
@@ -54,10 +52,6 @@ bot.on('connected', function() {
     });
 });
 
-bot.on('invited', function(event) {
-    bot.join(event.channel);
-});
-
 bot.on('message', function(event) {
     let
         from=event.nick,
@@ -67,7 +61,8 @@ bot.on('message', function(event) {
     if (message.match(/^\.dalle\s.+$/)) {
         let
             url = config.dalle.api_url,
-            prompt = message.slice(7).trim();
+            prompt = message.slice(7).trim(),
+            buffer;
         // check if bot is not handling another call
         if (!channels[to].running){
             channels[to].running = true;
@@ -79,7 +74,7 @@ bot.on('message', function(event) {
                         fs.mkdirSync(path.join(__dirname,'images',to), { recursive: true });
                     }
                     for (let i=0; i < response.body.images.length ; i++){
-                        let buffer = Buffer.from(response.body.images[i], "base64");
+                        buffer = Buffer.from(response.body.images[i], "base64");
                         fs.writeFileSync(path.join(__dirname,'images',to,`dall-e_result_${i}.jpg`), buffer);
                     }
                     const options_horizontal = {
@@ -138,7 +133,7 @@ bot.on('message', function(event) {
 });
 
 bot.on('registered', function (){
-    bot.say('nickserv','identify '+ password);
+    bot.say('nickserv','identify '+ pass);
 })
 
-bot.connect({host,port,tls,nick,username,gecos,password});
+bot.connect({host,port,tls,nick});
